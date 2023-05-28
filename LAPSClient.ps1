@@ -1,9 +1,27 @@
 #Standalone LAPS GUI Development Section
 
-#Color placeholders
-$BGcolor = "#000000"
-$TextColor = "#FFFFFF"
-$BoxColor = "#000000"
+#Get current domain
+$domain = (Get-CIMInstance -ClassName Win32_ComputerSystem).Domain
+
+#Determine Dark/Light Mode
+# Get the current theme
+$theme = (Get-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize").AppsUseLightTheme
+$BrandColor = '#0078D7'
+
+#Dark/Light Parameters
+# If the theme is 0, it is dark mode
+if ($theme -eq 0) {
+    #DARK MODE
+    $BGcolor = 'Black'
+    $TextColor = 'White'
+    $BoxColor = $BrandColor
+}
+else {
+    #LIGHT MODE
+    $BGcolor = 'WhiteSmoke'
+    $TextColor = 'Black'
+    $BoxColor = $BrandColor
+}
     
 # Import the module
 Add-Type -AssemblyName System.Windows.Forms
@@ -21,11 +39,11 @@ $LapsForm.StartPosition = 'CenterScreen'
 #Title for box
 $titleTag = New-Object system.Windows.Forms.Label
 $titleTag.text = "LAPS GUI"
-$titleTag.AutoSize = $true
 $titleTag.width = 25
 $titleTag.height = 10
 $titleTag.location = New-Object System.Drawing.Point(88, 20)
 $titleTag.Font = New-Object System.Drawing.Font('Segoe UI', 16, [System.Drawing.FontStyle]([System.Drawing.FontStyle]::Bold))
+$titleTag.AutoSize = $true
 $titleTag.ForeColor = $TextColor
 
 #Logo sourced from choccolatey gal
@@ -134,26 +152,27 @@ $lapsStart.height = 30
 $lapsStart.location = New-Object System.Drawing.Point(154, 251)
 $lapsStart.Font = New-Object System.Drawing.Font('Segoe UI', 10, [System.Drawing.FontStyle]([System.Drawing.FontStyle]::Bold))
 $lapsStart.BackColor = $BoxColor
+$lapsStart.ForeColor = $ButtonText
 $lapsStart.Add_Click({ 
         #First, check if Windows LAPS is checked
         if ($windowsLaps.Checked -eq $false) {
             #Next, run a test AD query to see if the user has RSAT and entitlements to run the command
             try {
-                $testcaser = Get-ADUser -Identity $env:USERNAME -ErrorAction SilentlyContinue
+                Get-ADUser -Identity $env:USERNAME -ErrorAction SilentlyContinue
                 if ($altCreds.Checked -eq $true) {
-        
+    
                     #IF Windows LAPS is off, alternate credentials is on, run the command with alternate credentials
                     $output = Get-ADComputer $hostname -Server $domain -Credential (Get-Credential -Credential $usernameInput.Text) -Properties ms-Mcs-AdmPwd | Select-Object -ExpandProperty ms-Mcs-AdmPwd
-            
+        
                     #If the output is null, the computer is not in AD
-                    if ($output -eq $null) {
+                    if ($null -eq $output) {
                         $wshell = New-Object -ComObject Wscript.Shell
                         $wshell.Popup("Computer not found in Active Directory", 0, "Error", 0x1)
                     }
                     else {
                         #If the output is not null, the computer is in AD and the password is returned
                         $output | clip
-    
+
                         $wshell = New-Object -ComObject Wscript.Shell
                         $wshell.Popup("Password for $hostname is $output. Copied to clipboard.", 0, "Password", 0x0)
                     }
@@ -161,16 +180,16 @@ $lapsStart.Add_Click({
                 else {
                     #If Windows LAPS is off, and alternate credentials is off, run the command with current credentials
                     $output = Get-ADComputer $hostname -Server $domain -Properties ms-Mcs-AdmPwd | Select-Object -ExpandProperty ms-Mcs-AdmPwd
-            
+        
                     #If the output is null, the computer is not in AD
-                    if ($output -eq $null) {
+                    if ($null -eq $output) {
                         $wshell = New-Object -ComObject Wscript.Shell
                         $wshell.Popup("Computer not found in Active Directory", 0, "Error", 0x1)
                     }
                     else {
                         #If the output is not null, the computer is in AD and the password is returned
                         $output | clip
-    
+
                         $wshell = New-Object -ComObject Wscript.Shell
                         $wshell.Popup("Password for $hostname is $output. Copied to clipboard.", 0, "Password", 0x0)
                     }
@@ -191,9 +210,9 @@ $lapsStart.Add_Click({
                 $altcredCheck = Get-Credential -Credential $usernameInput.Text
                 #IF Windows LAPS is on, alternate credentials is on, run the command with alternate credentials
                 $output = Get-LapsADPassword  $hostnameInput.Text -Credential $altcredCheck -DecryptionCredential $altcredCheck -Domain $domainInput.Text $altcredCheck -AsPlainText
-                
+            
                 #If the output is null, the computer is not in AD. If Output is a secure string, the LAPS is encrypted and requires a decryption credential
-                if ($output -eq $null) {
+                if ($null -eq $output) {
                     $wshell = New-Object -ComObject Wscript.Shell
                     $wshell.Popup("Computer not found in Active Directory", 0, "Error", 0x1)
                 }
@@ -208,9 +227,9 @@ $lapsStart.Add_Click({
             else {
                 #If Windows LAPS is on, and alternate credentials is off, run the command with current credentials
                 $output = Get-LapsADPassword $hostnameInput.Text -AsPlainText -Domain $domainInput.Text | Select-Object -ExpandProperty Password
-                
+            
                 #If the output is null, the computer is not in AD. If Output is a secure string, the LAPS is encrypted and requires a decryption credential
-                if ($output -eq $null) {
+                if ($null -eq $output) {
                     $wshell = New-Object -ComObject Wscript.Shell
                     $wshell.Popup("Computer not found in Active Directory", 0, "Error", 0x1)
                 }
