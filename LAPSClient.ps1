@@ -62,6 +62,14 @@ $windowsLaps.width = 25
 $windowsLaps.height = 10
 $windowsLaps.location = New-Object System.Drawing.Point(17, 60)
 
+#To the right of the checkbox for using Windows LAPS, add a LAPS Azure AD option checkbox
+$azureLaps = New-Object system.Windows.Forms.CheckBox
+$azureLaps.text = "Use Azure AD LAPS"
+$azureLaps.AutoSize = $true
+$azureLaps.width = 25
+$azureLaps.height = 10
+$azureLaps.location = New-Object System.Drawing.Point(150, 60)
+
 #Checkbox for using alternate credentials
 $altCreds = New-Object system.Windows.Forms.CheckBox
 $altCreds.text = "Use Alternate Credentials"
@@ -152,7 +160,7 @@ $lapsStart.height = 30
 $lapsStart.location = New-Object System.Drawing.Point(154, 251)
 $lapsStart.Font = New-Object System.Drawing.Font('Segoe UI', 10, [System.Drawing.FontStyle]([System.Drawing.FontStyle]::Bold))
 $lapsStart.BackColor = $BoxColor
-$lapsStart.ForeColor = $ButtonText
+$lapsStart.ForeColor = $TextColor
 $lapsStart.Add_Click({ 
         #First, check if Windows LAPS is checked
         if ($windowsLaps.Checked -eq $false) {
@@ -241,6 +249,30 @@ $lapsStart.Add_Click({
                     $wshell.Popup("Password for $hostname is $output. Copied to clipboard.", 0, "Password", 0x0)
                 }
             }
+
+            #Add new case, if the Windows LAPS AD checkbox is checked, use Get-LAPSAADPassword
+
+            if ($azureLaps.Checked -eq $true) {
+               #Alt creds condition
+                if ($altCreds.Checked -eq $true) {
+                    $altcredCheck = Get-Credential -Credential $usernameInput.Text
+                    #IF Windows LAPS is on, alternate credentials is on, run the command with alternate credentials
+                    $output = Get-LapsAADPassword  $hostnameInput.Text -Credential $altcredCheck -DecryptionCredential $altcredCheck -Domain $domainInput.Text $altcredCheck -AsPlainText
+            
+                    #If the output is null, the computer is not in AD. If Output is a secure string, the LAPS is encrypted and requires a decryption credential
+                    if ($null -eq $output) {
+                        $wshell = New-Object -ComObject Wscript.Shell
+                        $wshell.Popup("Computer not found in Active Directory", 0, "Error", 0x1)
+                    }
+                    else {
+                        #If the output is not null, the computer is in AD and the password is returned
+                        $output | clip
+
+                        $wshell = New-Object -ComObject Wscript.Shell
+                        $wshell.Popup("Password for $hostname is $output. Copied to clipboard.", 0, "Password", 0x0)
+                    }
+                }
+            }
         }
     })
 #Add keypress event to start button
@@ -248,7 +280,7 @@ $LapsForm.KeyPreview = $true
 $LapsForm.Add_KeyDown({ if ($_.KeyCode -eq "Enter") { $lapsStart.PerformClick() } })
 
 #Print the above GUI applets in the box
-$LapsForm.controls.AddRange(@($Lapslogo, $domainInput, $domainLabel, $titleTag, $hostnameLabel, $hostnameInput, $usernameInfo, $usernameInput, $lapsStart, $windowsLaps, $altCreds))
+$LapsForm.controls.AddRange(@($Lapslogo, $domainInput, $domainLabel, $titleTag, $hostnameLabel, $hostnameInput, $usernameInfo, $usernameInput, $lapsStart, $windowsLaps, $altCreds, $azureLaps))
 
 #SHOW ME THE MONEY
 [void]$LapsForm.ShowDialog()
