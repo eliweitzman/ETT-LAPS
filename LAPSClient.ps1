@@ -253,25 +253,27 @@ $lapsStart.Add_Click({
             #Add new case, if the Windows LAPS AD checkbox is checked, use Get-LAPSAADPassword
 
             if ($azureLaps.Checked -eq $true) {
-               #Alt creds condition
-                if ($altCreds.Checked -eq $true) {
-                    $altcredCheck = Get-Credential -Credential $usernameInput.Text
-                    #IF Windows LAPS is on, alternate credentials is on, run the command with alternate credentials
-                    $output = Get-LapsAADPassword  $hostnameInput.Text -Credential $altcredCheck -DecryptionCredential $altcredCheck -Domain $domainInput.Text $altcredCheck -AsPlainText
-            
-                    #If the output is null, the computer is not in AD. If Output is a secure string, the LAPS is encrypted and requires a decryption credential
-                    if ($null -eq $output) {
-                        $wshell = New-Object -ComObject Wscript.Shell
-                        $wshell.Popup("Computer not found in Active Directory", 0, "Error", 0x1)
-                    }
-                    else {
-                        #If the output is not null, the computer is in AD and the password is returned
-                        $output | clip
+               #Azure LAPS is on, so we now need to connect to MS Graph API and get the password
+               #First, get the Azure AD Tenant ID
+               $tenantID = Read-Host -Prompt "Enter the Azure AD Tenant ID"
+               $clientID = Read-Host -Prompt "Enter the Azure AD Client ID"
 
-                        $wshell = New-Object -ComObject Wscript.Shell
-                        $wshell.Popup("Password for $hostname is $output. Copied to clipboard.", 0, "Password", 0x0)
-                    }
-                }
+               #Next, actually connect to the MS Graph API
+               Connect-MgGraph -TenantId $tenantID -ClientId $clientID
+               #Now, get the password
+               $lapsResult = Get-LapsAADPassword -DeviceIds $hostnameInput.Text -AsPlainText
+               #If the output is null, the computer is not in Azure AD. If Output is a secure string, the LAPS is encrypted and requires a decryption credential
+                if ($null -eq $lapsResult) {
+                      $wshell = New-Object -ComObject Wscript.Shell
+                      $wshell.Popup("Computer not found in Azure AD", 0, "Error", 0x1)
+                 }
+                 else {
+                      #If the output is not null, the computer is in Azure AD and the password is returned
+                      $lapsResult | clip
+    
+                      $wshell = New-Object -ComObject Wscript.Shell
+                      $wshell.Popup("Password for $hostname is $lapsResult. Copied to clipboard.", 0, "Password", 0x0)
+                 }
             }
         }
     })
