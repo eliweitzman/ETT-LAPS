@@ -261,7 +261,7 @@ $lapsStart.Add_Click({
                #Next, actually connect to the MS Graph API
                Connect-MgGraph -TenantId $tenantID -ClientId $clientID
                #Now, get the password
-               $lapsResult = Get-LapsAADPassword -DeviceIds $hostnameInput.Text -AsPlainText
+               $lapsResult = (Get-LapsAADPassword -DeviceIds $hostnameInput.Text -IncludePasswords -AsPlainText).Password
                #If the output is null, the computer is not in Azure AD. If Output is a secure string, the LAPS is encrypted and requires a decryption credential
                 if ($null -eq $lapsResult) {
                       $wshell = New-Object -ComObject Wscript.Shell
