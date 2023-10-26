@@ -70,6 +70,21 @@ $azureLaps.width = 25
 $azureLaps.height = 10
 $azureLaps.location = New-Object System.Drawing.Point(150, 60)
 
+#IF Azure LAPS is checked, disable the Windows LAPS checkbox, and domain input box
+$azureLaps.Add_CheckStateChanged({
+        if ($azureLaps.Checked -eq $true) {
+            $windowsLaps.Checked = $false
+            $windowsLaps.Enabled = $false
+            $domainInput.Enabled = $false
+            $altCreds.Enabled = $false
+            $altCreds.Checked = $false
+        }
+        else {
+            $windowsLaps.Enabled = $true
+            $domainInput.Enabled = $true
+        }
+    })
+
 #Checkbox for using alternate credentials
 $altCreds = New-Object system.Windows.Forms.CheckBox
 $altCreds.text = "Use Alternate Credentials"
@@ -250,32 +265,30 @@ $lapsStart.Add_Click({
                 }
             }
 
-            #Add new case, if the Windows LAPS AD checkbox is checked, use Get-LAPSAADPassword
+        #Add new case, if the Windows LAPS AD checkbox is checked, use Get-LAPSAADPassword
+        } if ($azureLaps.Checked -eq $true) {
+            #Azure LAPS is on, so we now need to connect to MS Graph API and get the password
+            #First, get the Azure AD Tenant ID
+            $tenantID = Read-Host -Prompt "Enter the Azure AD Tenant ID"
+            $clientID = Read-Host -Prompt "Enter the Azure AD Client ID"
 
-            if ($azureLaps.Checked -eq $true) {
-               #Azure LAPS is on, so we now need to connect to MS Graph API and get the password
-               #First, get the Azure AD Tenant ID
-               $tenantID = Read-Host -Prompt "Enter the Azure AD Tenant ID"
-               $clientID = Read-Host -Prompt "Enter the Azure AD Client ID"
-
-               #Next, actually connect to the MS Graph API
-               Connect-MgGraph -TenantId $tenantID -ClientId $clientID
-               #Now, get the password
-               $lapsResult = (Get-LapsAADPassword -DeviceIds $hostnameInput.Text -IncludePasswords -AsPlainText).Password
-               #If the output is null, the computer is not in Azure AD. If Output is a secure string, the LAPS is encrypted and requires a decryption credential
-                if ($null -eq $lapsResult) {
-                      $wshell = New-Object -ComObject Wscript.Shell
-                      $wshell.Popup("Computer not found in Azure AD", 0, "Error", 0x1)
-                 }
-                 else {
-                      #If the output is not null, the computer is in Azure AD and the password is returned
-                      $lapsResult | clip
-    
-                      $wshell = New-Object -ComObject Wscript.Shell
-                      $wshell.Popup("Password for $hostname is $lapsResult. Copied to clipboard.", 0, "Password", 0x0)
-                 }
-            }
-        }
+            #Next, actually connect to the MS Graph API
+            Connect-MgGraph -TenantId $tenantID -ClientId $clientID
+            #Now, get the password
+            $lapsResult = (Get-LapsAADPassword -DeviceIds $hostnameInput.Text -IncludePasswords -AsPlainText).Password
+            #If the output is null, the computer is not in Azure AD. If Output is a secure string, the LAPS is encrypted and requires a decryption credential
+             if ($null -eq $lapsResult) {
+                   $wshell = New-Object -ComObject Wscript.Shell
+                   $wshell.Popup("Computer not found in Azure AD", 0, "Error", 0x1)
+              }
+              else {
+                   #If the output is not null, the computer is in Azure AD and the password is returned
+                   $lapsResult | clip
+ 
+                   $wshell = New-Object -ComObject Wscript.Shell
+                   $wshell.Popup("Password for $hostname is $lapsResult. Copied to clipboard.", 0, "Password", 0x0)
+              }
+         }
     })
 #Add keypress event to start button
 $LapsForm.KeyPreview = $true
