@@ -266,7 +266,7 @@ $lapsStart.Add_Click({
             }
 
         #Add new case, if the Windows LAPS AD checkbox is checked, use Get-LAPSAADPassword
-        } if ($azureLaps.Checked -eq $true) {
+        } elseif ($azureLaps.Checked -eq $true -and $windowsLaps.Checked -eq $false -and $altCreds.Checked -eq $false) {
             #Azure LAPS is on, so we now need to connect to MS Graph API and get the password
             #First, get the Azure AD Tenant ID
             $tenantID = Read-Host -Prompt "Enter the Azure AD Tenant ID"
